@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Document</title>
+        <link rel="stylesheet"
+            href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css">
+        <script src="https://cdn.tailwindcss.com"></script>
+    </head>
+    <style>
+        /* Put this in your main CSS (public/styles.css or inside <style> in EJS) */
+        @keyframes blinkRing {
+            0% { box-shadow: 0 0 0 3px rgba(153, 21, 247, 0.8); }  /* blue-300 */
+            50% { box-shadow: 0 0 0 3px transparent; }
+            100% { box-shadow: 0 0 0 3px rgba(153, 21, 247, 0.8); }
+        }
+
+        .blink-ring {
+            animation: blinkRing 1s infinite;
+            border-radius: 0.375rem; /* match input rounded-md */
+        }
+        .floating-animation {
+            animation: float 3s ease-in-out infinite;
+        }
+        @keyframes float {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-10px); }
+        }
+        .chessboard {
+            display: grid;
+            grid-template-columns: repeat(8, minmax(0, 1fr));
+            grid-template-rows: repeat(8, minmax(0, 1fr));
+            width: 400px;
+            height: 400px;
+            transform: rotate(0deg);
+            box-shadow: 0 0 20px rgba(0, 255, 200, 0.3); /* teal LED glow */
+        }
+
+        .piece.white {
+            color: white;
+            filter: drop-shadow(0 0 2px rgba(0, 0, 0, 1));
+        }
+
+        .piece.black {
+            color: black;
+        }
+
+        .flipped {
+            transform: rotate(180deg);
+        }
+
+        .square {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 1px solid #194591; /* dark bluish-gray outline */
+
+        }
+
+        .square.light {
+            background-color: #D8B4FE; /* soft light gray */
+        }
+
+        .square.dark {
+            background-color: #44337A; /* medium gray-blue */
+        }
+
+        .piece {
+            font-size: 36px;
+            cursor: pointer;
+        }
+
+        .piece.draggable {
+            cursor: grab;
+        }
+
+        .dragging {
+            opacity: 0.5;
+        }
+
+        /* Rotate pieces for black player */
+        .flipped .piece {
+            transform: rotate(180deg);
+        }
+
+        /*Game Panel */
+        #moveHistory {
+            height: 150px;          /* fixed height (adjust as needed) */
+            overflow-y: scroll;       /* enable vertical scrolling */
+            overflow-x: hidden;     /* no horizontal scroll */
+            padding-right: 5px;     /* prevent scrollbar overlap */
+            scrollbar-width: thin;  /* nice thin scrollbar (Firefox) */
+            scrollbar-color: #c084fc #20203058; /* thumb, track */
+        }
+        #game-info {
+            /* height: 150px;          fixed height (adjust as needed) */
+            overflow-y: scroll;       /* enable vertical scrolling */
+            overflow-x: hidden;     /* no horizontal scroll */
+            padding-right: 5px;     /* prevent scrollbar overlap */
+            scrollbar-width: thin;  /* nice thin scrollbar (Firefox) */
+            scrollbar-color: #c084fc #20203058; /* thumb, track */
+        }
+        .Navbar i::after{
+            content: attr(data-label);
+            position: absolute;
+            top: -10px;
+            background-color: #0f2a1aac;
+            color: white;
+            padding: 0.4rem 0.7rem;
+            border-radius: 0.5rem;
+            font-size: 10px;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease, transform 0.3s ease;
+            transform: translateY(10px);
+            white-space: nowrap;
+            letter-spacing: 2px;  /* add breathing space between letters */
+            line-height: 1.2;       /* improves readability */
+        }
+        .Navbar i:hover::after {
+            opacity: 1;
+            transform: translateY(-50%) translateX(0px);
+        }
+        .strip-line {
+            position: absolute;
+            top: 185px;
+            bottom: 72px;
+            left: 11.53%;
+            transform: translateX(-50%);
+            width: 6px;
+            background: linear-gradient(to bottom,#ebd0ff,#2f0051,#6700b0,#370051,#ebd0ff);
+            z-index: 1;
+            border-radius: 3px;
+        }
+        .mini-strip-line {
+            position: absolute;
+            left: 90px;
+            right: 1400px;
+            top: 50%; /* Center vertically */
+            height: 8px; /* Thin height */
+            /* background: linear-gradient(to right,#2f0051,#370051,#ebd0ff,#6700b0); */
+            z-index: 0;
+            border-radius: 3px;
+        }
+    </style>
+    <body>
+        <!-- navbar -->
+        <div
+            class="Navbar absolute translate-x-[35%] translate-y-[90%] flex flex-col items-center gap-5 p-5 w-16 bg-gray-900 rounded-xl z-10">
+            <i
+                class="fas fa-play text-purple-700 p-2 rounded-full transition-transform duration-200 hover:scale-125 hover:bg-gray-800 cursor-pointer"
+                data-label="Play"></i>
+            <i
+                class="fas fa-puzzle-piece text-purple-700 p-2 rounded-full transition-transform duration-200 hover:scale-125 hover:bg-gray-800 cursor-pointer"
+                data-label="Puzzles "></i>
+            <i
+                class="fas fa-chart-line text-purple-700 p-2 rounded-full transition-transform duration-200 hover:scale-125 hover:bg-gray-800 cursor-pointer"
+                data-label="Analysis Board"></i>
+            <i
+                class="fas fa-cog text-purple-700 p-2 rounded-full transition-transform duration-200 hover:scale-125 hover:bg-gray-800 cursor-pointer"
+                data-label="Settings"></i>
+            <i
+                class="fas fa-question-circle text-purple-700 p-2 rounded-full transition-transform duration-200 hover:scale-125 hover:bg-gray-800 cursor-pointer"
+                data-label="Support"></i>
+
+        </div>
+        <div class="strip-line"></div>
+        <div
+            class="trophy w-[350px] h-[50px] mb-0 rounded-2xl p-8 text-white text-[38px] absolute translate-x-[35%] translate-y-[165%] z-[10]">
+            <i class="fas fa-trophy mr-2"></i>Play Ur Game
+        </div>
+        <div
+            class="mini-strip-line absolute translate-x-[190%] translate-y-[-1290%] bg-[linear-gradient(to_right,#6700b0,#2f0051,#370051,#ebd0ff)]"></div>
+        <div
+            class="mini-strip-line absolute translate-x-[190%] translate-y-[290%] bg-[linear-gradient(to_right,#6700b0,#2f0051,#370051,#ebd0ff)]"></div>
+        <div
+            class="mini-strip-line absolute translate-x-[190%] translate-y-[1790%] bg-[linear-gradient(to_right,#2f0051,#370051,#ebd0ff,#6700b0)]"></div>
+        <div
+            class="mini-strip-line absolute translate-x-[186%] translate-y-[3390%] bg-[linear-gradient(to_right,#ebd0ff,#6700b0,#2f0051,#370051)]"></div>
+
+        <div id="authCard"
+            class="w-[350px] mx-auto mb-8 rounded-2xl p-2 space-y-14 absolute translate-x-[40%] translate-y-[45%]">
+            <div
+                class="bullet justify-center w-[200px] h-[70px] mx-auto mb-8 rounded-2xl p-4 bg-white/10 backdrop-blur-2xl border border-white/20 shadow-[0_1px_10px_0_rgba(192,132,252,0.3)] text-white  flex items-center">
+                Play Bullet
+                <svg style="margin-left:8px;" fill="white" aria-hidden="true"
+                    data-glyph="game-time-bullet"
+                    viewBox="0 0 24 24" height="22px" width="22px"
+                    xmlns="http://www.w3.org/2000/svg"><path
+                        xmlns="http://www.w3.org/2000/svg"
+                        d="M7.17005 15.2999L8.60005 16.7699L0.330049 23.6699L7.17005 15.2999ZM0.300049 17.5999L4.80005 11.5999L5.70005 13.5999L0.300049 17.5999ZM10.77 10.0999C14.24 6.49994 16.7 4.89994 19.47 3.69994C17.07 3.69994 14.17 4.06994 9.67005 8.29994C9.70005 8.79994 10.37 9.76994 10.77 10.0999ZM21.83 2.16994C21.83 2.16994 22.06 3.26994 22.06 4.93994C22.06 7.60994 21.39 11.7699 17.89 15.2699L15.72 17.4399C15.05 18.1099 14.39 18.0399 13.59 17.7099L6.12005 24.0099L15.92 11.8399L10.69 15.8699C10.26 15.4699 9.76005 15.0399 9.36005 14.6399C7.63005 12.9399 5.23005 9.63994 6.59005 8.26994L8.79005 6.13994C12.32 2.63994 16.42 1.93994 19.09 1.93994C20.72 1.93994 21.82 2.16994 21.82 2.16994H21.83Z"></path></svg>
+            </div>
+            <div
+                class="blitz justify-center w-[200px] h-[70px] mx-auto mb-8 rounded-2xl p-4 bg-white/10 backdrop-blur-2xl border border-white/20 shadow-[0_1px_10px_0_rgba(192,132,252,0.3)] text-white flex items-center">
+                Play Blitz
+                <i class="fas fa-bolt text-lg mb-1 ml-2"></i>
+            </div>
+            <div
+                class="normal justify-center w-[200px] h-[70px] mx-auto mb-8 rounded-2xl p-4 bg-white/10 backdrop-blur-2xl border border-white/20 shadow-[0_1px_10px_0_rgba(192,132,252,0.3)] text-white flex items-center">
+                Play 10-min
+                <i class="fas fa-stopwatch text-lg mb-1 ml-2"></i>
+            </div>
+            <div
+                class="bot black justify-center w-[200px] h-[70px] mx-auto mb-8 rounded-2xl p-4 bg-white/10 backdrop-blur-2xl border border-white/20 shadow-[0_1px_10px_0_rgba(192,132,252,0.3)] text-white flex items-center">
+                Play With Bot
+                <i class="fas fa-robot text-lg mb-1 ml-2"></i>
+            </div>
+        </div>
+        <div
+            class="w-full h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-indigo-950 flex items-center justify-center">
+            <div class="container mx-auto max-w-6xl">
+                <input id="playerNameInput" type="text"
+                    placeholder="Enter Name..." autocomplete="off"
+                    autocorrect="off" autocapitalize="off" spellcheck="false"
+                    class="ml-3 px-3 py-2 w-40 rounded-md bg-[rgba(30,41,59,0.5)] text-white placeholder-gray-400 border border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-400 absolute translate-x-[1100px] translate-y-[0%]" />
+                <div
+                    class="profile-name w-10 h-10 rounded-full absolute translate-x-[1280px] translate-y-[0%] flex justify-center items-center text-purple-500 bg-[rgba(30,41,59,0.5)] font-bold border-2 border-purple-500">-</div>
+                <div class="text-center mb-8">
+                    <h1
+                        class="text-5xl font-bold text-white mb-4 floating-animation mr-4">
+                        <i class="fas fa-chess-king text-white-400 mr-4"></i>
+                        ChessSmasher Pro
+                    </h1>
+                    <p class="text-gray-300 text-lg">Experience chess like never
+                        before</p>
+                </div>
+                <div class="flex flex-col items-center gap-4">
+                    <!-- Opponent Time Bar -->
+                    <div
+                        class="w-96 flex justify-between items-center bg-gray-800 text-white px-3 py-2 rounded-md shadow">
+                        <div class="flex items-center gap-2">
+                            <div id="OpponentStatus"
+                                class="enter-status w-2 h-2 bg-gray-600 rounded-full"></div>
+                            <!-- opponent avatar placeholder -->
+                            <span id="opponentName">Waiting for
+                                Opponent...</span>
+                        </div>
+                        <div id="opponentTimer"
+                            class="text-lg font-bold">00:00</div>
+                    </div>
+                    <!-- Chessboard -->
+                    <div
+                        class="chessboard w-96 h-96 bg-red-200 rounded-xl overflow-hidden border-2 border-gray-500/60 shadow-[0_5px_10px_0_rgba(192,132,252,0.3)]"></div>
+                    <!-- Player Time Bar -->
+                    <div
+                        class="w-96 flex justify-between items-center bg-gray-800 text-white px-3 py-2 rounded-md shadow">
+                        <div class="flex items-center gap-2">
+                            <div
+                                class="w-2 h-2 bg-green-600 rounded-full"></div>
+                            <!-- player avatar placeholder -->
+                            <span id="playerName">---</span>
+                        </div>
+                        <div id="playerTimer"
+                            class="text-lg font-bold">00:00</div>
+                    </div>
+                    <!-- Game Panel -->
+                    <div
+                        class="game-panel my-0 h-[560px] w-[360px] absolute translate-x-[150%] translate-y-[-5%] bg-[rgba(15,15,35,0.8)] backdrop-blur-[20px] border border-[rgba(59,130,246,0.3)] rounded-2xl shadow-[0_20px_40px_rgba(0,0,0,0.2)] overflow-hidden">
+                        <!-- Top Toolbar -->
+                        <div
+                            class="toolbar relative flex items-center w-full justify-between text-gray-300 bg-[rgba(30,41,59,0.5)] px-4 py-2 my-0 rounded-b-2xl">
+                            <!-- Left side -->
+                            <div class="flex items-center space-x-4 gap-x-4">
+                                <div
+                                    class="flex flex-col items-center text-gray-400 cursor-pointer hover:text-blue-400">
+                                    <i
+                                        class="fas fa-chart-line text-lg mb-1"></i>
+                                    <span class="text-sm">Analysis</span>
+                                </div>
+                                <div
+                                    class="flex flex-col items-center text-white cursor-pointer hover:text-blue-400">
+                                    <i
+                                        class="fas fa-stopwatch text-lg mb-1"></i>
+                                    <span class="text-sm">Your Game</span>
+                                </div>
+                                <div
+                                    class="flex flex-col items-center text-gray-400 cursor-pointer hover:text-blue-400">
+                                    <i
+                                        class="fas fa-plus-square text-lg mb-1"></i>
+                                    <span class="text-sm">New Game</span>
+                                </div>
+                                <div
+                                    class="flex flex-col items-center text-gray-400 cursor-pointer hover:text-blue-400">
+                                    <i
+                                        class="fas fa-chess-board text-lg mb-1"></i>
+                                    <span class="text-sm">Games</span>
+                                </div>
+                            </div>
+
+                        </div>
+                        <div class="mt-4 ml-4 mr-4 mb-2">
+                            <h4 class="text-white font-semibold mb-3">
+                                <i class="fas fa-history mr-2"></i>Move History
+                            </h4>
+                            <div id="moveHistory"
+                                class="p-3 text-sm text-gray-300 bg-[rgba(30,41,59,0.5)] rounded-lg max-h-[250px] overflow-y-auto">
+                                Game yet to start...
+                            </div>
+                        </div>
+                        <div
+                            class="gameControls text-white absolute translate-y-[85%] flex justify-between items-center gap-x-6 mt-4 w-full px-4">
+                            <!-- Left group -->
+                            <div class="flex items-center gap-x-6">
+                                <span id="half-points"
+                                    class="cursor-default hover:scale-105">
+                                    <i class="fas fa-handshake mr-2"></i>Draw
+                                </span>
+                                <span id="Resign"
+                                    class="cursor-default hover:scale-105">
+                                    <i class="fas fa-flag mr-2"></i>Resign
+                                </span>
+                            </div>
+                            <!-- Right group -->
+                            <div
+                                class="additional-settings flex items-center gap-x-3">
+                                <span id="share"
+                                    class="cursor-default hover:scale-105">
+                                    <i class="fas fa-share-alt mr-2"></i>
+                                </span>
+                                <span id="flip"
+                                    class="cursor-default hover:scale-105">
+                                    <i class="fa-solid fa-code-compare"></i>
+                                </span>
+                            </div>
+                        </div>
+                        <div id="game-info"
+                            class="absolute translate-y-[50%] h-36 w-full left-0 right-0 p-2 flex flex-col text-sm text-gray-300 bg-[rgba(30,41,59,0.5)]">
+                            <div class="flex flex-col items-center justify-center h-full">
+                                <div class="game-status">
+                                    <span id="playerNameStatus" class="mr-2">-</span>vs<span id="opponentNameStatus" class="ml-2">-</span>
+                                </div>
+                                <div class="game-rules">win +9 / draw -1 / lose -10</div>
+                            </div>
+                            <div id="chat-messages"
+                                class="w-full mt-2 space-y-1 text-left"></div>
+                        </div>
+                        <div
+                            class="convoSpace absolute bottom-1 left-0 right-0 p-2 flex items-center">
+                            <textarea id="sendMessage"
+                                class="sendMessage p-3 text-sm text-gray-300 h-[51px] w-[263px] bg-[rgba(30,41,59,0.5)] rounded-lg overflow-y-auto resize-none whitespace-pre-wrap break-words"
+                                placeholder="Say hi!..."></textarea>
+                            <button class="send-emoji ml-3">
+                                <svg xmlns="http://www.w3.org/2000/svg"
+                                    xmlns:xlink="http://www.w3.org/1999/xlink"
+                                    version="1.1" width="20px" height="20px"
+                                    viewBox="0 0 256 256" xml:space="preserve">
+                                    <g
+                                        style="stroke: none; stroke-width: 0; stroke-dasharray: none; stroke-linecap: butt; stroke-linejoin: miter; stroke-miterlimit: 10; fill: none; fill-rule: nonzero; opacity: 1;"
+                                        transform="translate(1.4065934065934016 1.4065934065934016) scale(2.81 2.81)">
+                                        <path
+                                            d="M 45 90 C 20.187 90 0 69.813 0 45 C 0 20.187 20.187 0 45 0 c 24.813 0 45 20.187 45 45 C 90 69.813 69.813 90 45 90 z M 45 4 C 22.393 4 4 22.393 4 45 s 18.393 41 41 41 s 41 -18.393 41 -41 S 67.607 4 45 4 z"
+                                            style="stroke: none; stroke-width: 1; stroke-dasharray: none; stroke-linecap: butt; stroke-linejoin: miter; stroke-miterlimit: 10; fill: rgb(237,237,237); fill-rule: nonzero; opacity: 1;"
+                                            transform=" matrix(1 0 0 1 0 0) "
+                                            stroke-linecap="round" />
+                                        <circle cx="31" cy="35.55" r="5"
+                                            style="stroke: none; stroke-width: 1; stroke-dasharray: none; stroke-linecap: butt; stroke-linejoin: miter; stroke-miterlimit: 10; fill: rgb(237,237,237); fill-rule: nonzero; opacity: 1;"
+                                            transform="  matrix(1 0 0 1 0 0) " />
+                                        <circle cx="59" cy="35.55" r="5"
+                                            style="stroke: none; stroke-width: 1; stroke-dasharray: none; stroke-linecap: butt; stroke-linejoin: miter; stroke-miterlimit: 10; fill: rgb(237,237,237); fill-rule: nonzero; opacity: 1;"
+                                            transform="  matrix(1 0 0 1 0 0) " />
+                                        <path
+                                            d="M 45 69.345 c -7.954 0 -15.337 -3.969 -19.751 -10.617 c -0.408 -0.614 -0.445 -1.402 -0.097 -2.052 c 0.349 -0.649 1.026 -1.055 1.763 -1.055 h 36.17 c 0.737 0 1.414 0.405 1.763 1.055 c 0.348 0.649 0.312 1.438 -0.097 2.052 C 60.337 65.376 52.953 69.345 45 69.345 z M 31.129 59.621 c 3.656 3.636 8.614 5.724 13.871 5.724 s 10.215 -2.088 13.871 -5.724 H 31.129 z"
+                                            style="stroke: none; stroke-width: 1; stroke-dasharray: none; stroke-linecap: butt; stroke-linejoin: miter; stroke-miterlimit: 10; fill: rgb(237,237,237); fill-rule: nonzero; opacity: 1;"
+                                            transform=" matrix(1 0 0 1 0 0) "
+                                            stroke-linecap="round" />
+                                    </g>
+                                </svg>
+                            </button>
+                            <button class="send-button ml-5">
+                                <svg xmlns="http://www.w3.org/2000/svg"
+                                    xmlns:xlink="http://www.w3.org/1999/xlink"
+                                    version="1.1" width="20px" height="20px"
+                                    viewBox="0 0 256 256" xml:space="preserve">
+                                    <g
+                                        style="stroke: none; stroke-width: 0; stroke-dasharray: none; stroke-linecap: butt; stroke-linejoin: miter; stroke-miterlimit: 10; fill: none; fill-rule: nonzero; opacity: 1;"
+                                        transform="translate(1.4065934065934016 1.4065934065934016) scale(2.81 2.81)">
+                                        <path
+                                            d="M 2.849 87.151 c -0.801 -0.801 -0.8 -2.099 0 -2.899 l 29.441 -29.441 c 0.8 -0.8 2.098 -0.801 2.899 0 s 0.8 2.099 0 2.899 L 5.748 87.151 C 4.947 87.952 3.649 87.952 2.849 87.151 z"
+                                            style="stroke: none; stroke-width: 1; stroke-dasharray: none; stroke-linecap: butt; stroke-linejoin: miter; stroke-miterlimit: 10; fill: rgb(232,232,232); fill-rule: nonzero; opacity: 1;"
+                                            transform=" matrix(1 0 0 1 0 0) "
+                                            stroke-linecap="round" />
+                                        <path
+                                            d="M 0.916 65.892 c -0.801 -0.801 -0.8 -2.099 0 -2.899 l 11.08 -11.08 c 0.8 -0.8 2.098 -0.801 2.899 0 c 0.801 0.801 0.8 2.099 0 2.899 l -11.08 11.08 C 3.015 66.692 1.717 66.692 0.916 65.892 z"
+                                            style="stroke: none; stroke-width: 1; stroke-dasharray: none; stroke-linecap: butt; stroke-linejoin: miter; stroke-miterlimit: 10; fill: rgb(232,232,232); fill-rule: nonzero; opacity: 1;"
+                                            transform=" matrix(1 0 0 1 0 0) "
+                                            stroke-linecap="round" />
+                                        <path
+                                            d="M 24.108 89.084 c -0.8 -0.8 -0.8 -2.099 0 -2.899 l 11.08 -11.08 c 0.8 -0.8 2.099 -0.8 2.899 0 c 0.8 0.8 0.8 2.099 0 2.899 l -11.08 11.08 C 26.207 89.884 24.909 89.884 24.108 89.084 z"
+                                            style="stroke: none; stroke-width: 1; stroke-dasharray: none; stroke-linecap: butt; stroke-linejoin: miter; stroke-miterlimit: 10; fill: rgb(232,232,232); fill-rule: nonzero; opacity: 1;"
+                                            transform=" matrix(1 0 0 1 0 0) "
+                                            stroke-linecap="round" />
+                                        <path
+                                            d="M 89.399 0.601 c -0.53 -0.53 -1.306 -0.729 -2.025 -0.518 L 1.475 25.207 c -0.778 0.228 -1.348 0.891 -1.457 1.693 c -0.086 0.642 0.136 1.278 0.582 1.724 c 0.11 0.11 0.235 0.21 0.372 0.294 l 25.292 15.628 c 0.436 0.269 0.956 0.365 1.459 0.27 l 21.538 -4.079 C 65.667 32.684 78.597 18.514 89.399 0.601 z"
+                                            style="stroke: none; stroke-width: 1; stroke-dasharray: none; stroke-linecap: butt; stroke-linejoin: miter; stroke-miterlimit: 10; fill: rgb(232,232,232); fill-rule: nonzero; opacity: 1;"
+                                            transform=" matrix(1 0 0 1 0 0) "
+                                            stroke-linecap="round" />
+                                        <path
+                                            d="M 89.399 0.601 c 0.53 0.53 0.729 1.306 0.518 2.025 L 64.793 88.525 c -0.228 0.778 -0.891 1.348 -1.693 1.457 c -0.642 0.086 -1.278 -0.136 -1.724 -0.582 c -0.11 -0.11 -0.21 -0.235 -0.294 -0.372 L 45.452 63.736 c -0.269 -0.436 -0.365 -0.956 -0.27 -1.459 l 4.079 -21.538 L 89.399 0.601 z"
+                                            style="stroke: none; stroke-width: 1; stroke-dasharray: none; stroke-linecap: butt; stroke-linejoin: miter; stroke-miterlimit: 10; fill: rgb(219,219,219); fill-rule: nonzero; opacity: 1;"
+                                            transform=" matrix(1 0 0 1 0 0) "
+                                            stroke-linecap="round" />
+                                    </g>
+                                </svg>
+                            </button>
+                        </div>
+
+                    </div>
+                </div>
+
+                <script src="https://cdn.socket.io/4.8.1/socket.io.min.js"
+                    integrity="sha384-mkQ3/7FUtcGyoppY6bz/PORYoGqOl7/aSUMn2ymDOJcapfS6PHqxhRTMh1RR0Q6+"
+                    crossorigin="anonymous"></script>
+                <script
+                    src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.10.3/chess.min.js"
+                    integrity="sha512-xRllwz2gdZciIB+AkEbeq+gVhX8VB8XsfqeFbUh+SzHlN96dEduwtTuVuc2u9EROlmW9+yhRlxjif66ORpsgVA=="
+                    crossorigin="anonymous"
+                    referrerpolicy="no-referrer"></script>
+                <script src="/js/chessgame.js"></script>
+            </body>

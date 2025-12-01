@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Login / Sign Up Animation</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    .transition-all {
+      transition: all 0.8s ease-in-out;
+    }
+    .slanted {
+      clip-path: polygon(0 0, 70% 0, 100% 100%, 0% 100%);
+    }
+    .slanted-reverse {
+      clip-path: polygon(0 0, 100% 0, 100% 100%, 30% 100%);
+    }
+  </style>
+</head>
+<body class="flex justify-center items-center h-screen bg-purple-900 text-white">
+    <!-- Purple Slanted Panel -->
+    <div id="slanted-panel"
+         class="absolute inset-0 bg-gradient-to-r from-purple-700 to-purple-900 transition-all duration-700 slanted">
+    </div>
+
+    <!-- Login Form -->
+    <div id="login-form"
+         class="absolute right-0 w-1/2 h-full flex flex-col justify-center items-center p-10 transition-all duration-700">
+      <h2 class="text-2xl font-bold mb-6">Login</h2>
+      <input type="text" placeholder="Username" class="mb-4 p-2 w-full rounded bg-gray-800">
+      <input type="password" placeholder="Password" class="mb-4 p-2 w-full rounded bg-gray-800">
+      <button class="bg-purple-600 hover:bg-purple-700 px-6 py-2 rounded-lg">Login</button>
+      <p class="mt-4 text-sm">Don’t have an account? <span id="go-signup" class="text-purple-400 cursor-pointer">Sign up</span></p>
+    </div>
+
+    <!-- Signup Form -->
+    <div id="signup-form"
+         class="absolute left-0 w-1/2 h-full flex flex-col justify-center items-center p-10 transition-all duration-700 opacity-0">
+      <h2 class="text-2xl font-bold mb-6">Sign Up</h2>
+      <input type="text" placeholder="Username" class="mb-4 p-2 w-full rounded bg-gray-800">
+      <input type="email" placeholder="Email" class="mb-4 p-2 w-full rounded bg-gray-800">
+      <input type="password" placeholder="Password" class="mb-4 p-2 w-full rounded bg-gray-800">
+      <button class="bg-purple-600 hover:bg-purple-700 px-6 py-2 rounded-lg">Sign Up</button>
+      <p class="mt-4 text-sm">Already have an account? <span id="go-login" class="text-purple-400 cursor-pointer">Login</span></p>
+    </div>
+
+  <script>
+    const slanted = document.getElementById("slanted-panel");
+    const loginForm = document.getElementById("login-form");
+    const signupForm = document.getElementById("signup-form");
+    const goSignup = document.getElementById("go-signup");
+    const goLogin = document.getElementById("go-login");
+
+    goSignup.addEventListener("click", () => {
+      loginForm.style.opacity = "0";
+      loginForm.style.transform = "translateX(100%)";
+      slanted.classList.remove("slanted");
+      slanted.classList.add("slanted-reverse");
+
+      setTimeout(() => {
+        signupForm.style.opacity = "1";
+        signupForm.style.transform = "translateX(0)";
+      }, 700);
+    });
+
+    goLogin.addEventListener("click", () => {
+      signupForm.style.opacity = "0";
+      signupForm.style.transform = "translateX(-100%)";
+      slanted.classList.remove("slanted-reverse");
+      slanted.classList.add("slanted");
+
+      setTimeout(() => {
+        loginForm.style.opacity = "1";
+        loginForm.style.transform = "translateX(0)";
+      }, 700);
+    });
+  </script>
+</body>
+</html>
